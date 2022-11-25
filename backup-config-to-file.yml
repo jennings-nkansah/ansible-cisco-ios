@@ -1,0 +1,29 @@
+#################################################################
+#          Backup a Cisco IOS Router or Switch to a File        #
+#################################################################
+---
+- name: Backup Cisco IOSXE Router or Switch
+  hosts: iosxe
+  connection: ansible.netcommon.network_cli
+  gather_facts: false
+
+  tasks:
+    - name: Get device hostname
+      ios_facts:
+        gather_subset:
+        - hardware
+
+    - name: Get current date
+      local_action: command date +%Y-%b-%d
+      register: date
+
+    - name: Get current time
+      local_action: command date +%H:%M
+      register: time
+
+    - name: Get running-config and save to a file
+      ios_config:
+       backup: yes
+       backup_options:
+         filename: "{{ ansible_net_hostname }}_{{ time.stdout }}.cfg"
+         dir_path: /home/backup/{{ date.stdout }}
