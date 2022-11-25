@@ -1,0 +1,40 @@
+###################################################################################
+#      Ensure That 'Switchport Nonegotiate' Is Configured On All Trunk Ports      #
+###################################################################################
+---
+- name: Configure Switchport Nonegotiate on Trunk Ports
+  hosts: ios
+  gather_facts: no
+  vars:
+    dict: {}
+    dict_01: {}
+
+  tasks:
+    - name: Retrieving all interfaces
+      ios_command:
+        commands: show running-config | include ^interface
+      register: intf_list
+
+    - name: Retrieving interface configurations (step 1)
+      ios_command:
+        commands: show running-config {{ item }}
+      register: intf_config
+      loop: "{{ intf_list.stdout_lines[0] }}"
+
+    - name: Placing interface configurations in a dictionary
+      set_fact:
+        dict: "{{ dict | default({}) | combine( { item.item : item.stdout[0] } ) }}"
+      loop: "{{ intf_config.results }}"
+
+    - name: Picking out trunk interfaces
+      set_fact:
+        dict_01: "{{ dict_01 | default({}) | combine( { item.key : item.value } ) }}"
+      with_dict: "{{ dict }}"
+      when: "'\n switchport mode trunk' in item.value"
+
+    - name: Configuring switchport nonegotiate on trunk interfaces
+      ios_config:
+        lines:
+        - switchport nonegotiate
+        parents: "{{ item.key }}"
+      with_dict: "{{ dict_01 }}"
