@@ -1,0 +1,7 @@
+[ios]
+#hostname/ip address
+
+[ios:vars]
+ansible_port=22
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=ios
