@@ -1,0 +1,38 @@
+##########################################################################
+#     Configure a Scheduled Cron Job to Backup a Router Periodically     #
+##########################################################################
+---
+- name: Configure Cron Job to Backup Cisco Router
+  hosts: iosxe
+  connection: ansible.netcommon.network_cli
+  gather_facts: false
+
+  tasks:
+    - name: Get device hostname
+      ios_facts:
+        gather_subset:
+        - hardware
+
+    - name: Configure kron policy
+      ios_config:
+        lines:
+        - cli copy system:/running-config tftp://192.168.1.2/{{ ansible_net_hostname }}.cfg
+        parents: kron policy-list save-config
+        before: no kron policy-list save-config
+      notify: "save config"
+
+    - name: Configure kron schedule
+      ios_config:
+        lines:
+        - policy-list save-config
+        parents: kron occurrence weekly at 11:59 Fri recurring
+        match: exact
+        replace: line
+        before: no kron occurrence weekly in 11:59 recurring
+      notify: "save config"
+
+  handlers:
+    - name: Save running-configuration
+      ios_config:
+        save_when: modified
+      listen: "save config"
