@@ -1,13 +1,14 @@
-[ios]
+[iosdevice:children]
+iosxerouter
+iosswitch
+
+[iosxerouter]
 #hostname/ip address
 
-[ios:children]
-iosxe
-
-[iosxe]
+[iosswitch]
 #hostname/ip address
 
-[iosxe:vars]
+[iosdevice:vars]
 ansible_port=22
 ansible_connection=ansible.netcommon.network_cli
 ansible_network_os=ios
