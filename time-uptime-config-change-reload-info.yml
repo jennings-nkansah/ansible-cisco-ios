@@ -18,7 +18,7 @@
 
     - name: Format retrieved information
       set_fact:
-         output: "{{ config_extract.stdout | join('\n') }}"
+         output: "{{ config_extract.stdout | join('\n') | regex_replace('\\*', 'Time: ') | regex_replace('! ', '') }}"
 
     - name: Show device time, last change time and user, uptime, and reload reason
       debug:
