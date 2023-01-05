@@ -5,10 +5,9 @@
 - name: Configure Switchport Nonegotiate on Trunk Ports
   hosts: ios
   gather_facts: no
-  
+
   vars:
-    intf_config_dict: {}
-    trunk_intf_list: []
+     trunk_intf_list: []
 
   tasks:
     - name: Retrieving all interfaces
@@ -22,16 +21,12 @@
       register: intf_config
       loop: "{{ intf_list.stdout_lines[0] }}"
 
-    - name: Placing interface configurations in a dictionary
+    - name: Retrieving trunk interfaces (excluding port-channel member ports)
       set_fact:
-        intf_config_dict: "{{ intf_config_dict | default({}) | combine( { item.item : item.stdout[0] } ) }}"
+        trunk_intf_list: "{{ trunk_intf_list | default([]) + [ item.item ] }}"
       loop: "{{ intf_config.results }}"
-
-    - name: Picking out trunk interfaces (excluding port-channel member ports)
-      set_fact:
-        trunk_intf_list: "{{ trunk_intf_list | default([]) + [item.key] }}"
-      with_dict: "{{ intf_config_dict }}"
-      when: ('\n switchport mode trunk' in item.value) and ('\n channel-group' not in item.value)
+      no_log: true
+      when: ('\n switchport mode trunk' in item.stdout[0]) and ('\n channel-group' not in item.stdout[0])
 
     - name: Configuring switchport nonegotiate on trunk interfaces
       ios_config:
