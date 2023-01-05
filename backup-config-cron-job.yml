@@ -19,13 +19,13 @@
       ios_config:
         lines:
         - cli copy system:/running-config tftp://{{ tftp_server }}/{{ ansible_net_hostname }}.cfg
-        parents: kron policy-list save-config
-        before: no kron policy-list save-config
+        parents: kron policy-list backup-config
+        before: no kron policy-list backup-config
 
     - name: Configure kron schedule
       ios_config:
         lines:
-        - policy-list save-config
+        - policy-list backup-config
         parents: kron occurrence weekly at 11:59 Fri recurring
         match: exact
         replace: line
