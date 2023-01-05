@@ -28,6 +28,7 @@
         - policy-list backup-config
         parents: kron occurrence weekly at 11:59 Fri recurring
         before: no kron occurrence weekly in 11:59 recurring
+        replace: block
 
     - name: Save running-configuration
       ios_config:
