@@ -3,9 +3,11 @@
 ##########################################################################
 ---
 - name: Configure Cron Job to Backup Cisco Router
-  hosts: iosxe
-  connection: ansible.netcommon.network_cli
+  hosts: iosxerouter
   gather_facts: false
+
+  vars:
+    tftp_server: 192.168.1.2
 
   tasks:
     - name: Get device hostname
@@ -16,10 +18,9 @@
     - name: Configure kron policy
       ios_config:
         lines:
-        - cli copy system:/running-config tftp://192.168.1.2/{{ ansible_net_hostname }}.cfg
+        - cli copy system:/running-config tftp://{{ tftp_server }}/{{ ansible_net_hostname }}.cfg
         parents: kron policy-list save-config
         before: no kron policy-list save-config
-      notify: "save config"
 
     - name: Configure kron schedule
       ios_config:
@@ -29,10 +30,7 @@
         match: exact
         replace: line
         before: no kron occurrence weekly in 11:59 recurring
-      notify: "save config"
 
-  handlers:
     - name: Save running-configuration
       ios_config:
         save_when: modified
-      listen: "save config"
