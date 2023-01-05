@@ -1,0 +1,33 @@
+###################################################################################
+#          Display All Physical Interfaces With No IP Address Configured          #
+###################################################################################
+---
+- name: Display Physical Interfaces With No IP Addresses
+  hosts: ios
+  gather_facts: false
+
+  vars:
+    intf_noip_list: []
+
+  tasks:
+    - name: Retrieve all interfaces
+      ios_command:
+        commands: show running-config | include ^interface.*thernet.*$
+      register: intf_list
+
+    - name: Retrieve interfaces configurations
+      ios_command:
+        commands: show running-config {{ item }}
+      register: intf_config
+      loop: "{{ intf_list.stdout_lines[0] }}"
+
+    - name: Retrieve interfaces with no ip address
+      set_fact:
+        intf_noip_list: "{{ intf_noip_list | default([]) + [ item.item ] }}"
+      loop: "{{ intf_config.results }}"
+      no_log: true
+      when: "'\n ip address' not in item.stdout[0]"
+
+    - name: Display interfaces with no ip address
+      debug:
+        var: intf_noip_list
