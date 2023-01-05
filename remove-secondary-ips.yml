@@ -1,0 +1,36 @@
+###################################################################################
+#          Delete All Configured Secondary IP Addresses From Interfaces           #
+###################################################################################
+---
+- name: Remove All Secondary IP Addresses from Interfaces
+  hosts: iosxeprivate
+  gather_facts: false
+
+  vars:
+    intflist: []
+
+  tasks:
+    - name: Retrieving all interfaces
+      ios_command:
+        commands: show running-config | include ^interface
+      register: intf_list
+
+    - name: Retrieving secondary ip address configurations (step 1)
+      ios_command:
+        commands: show running-config {{ item }} | include ^ ip address.*secondary$
+      register: intf_config
+      loop: "{{ intf_list.stdout_lines[0] }}"
+
+    - name: Retrieving secondary ip address configurations (step 2)
+      set_fact:
+        intflist: "{{ intflist | default([]) + [{ 'interface': item.item, 'secondaryip': item.stdout_lines[0] }] }}"
+      loop: "{{ intf_config.results }}"
+      when: "item.stdout[0] != ''"
+      no_log: true
+
+    - name: Removing secondary ip address
+      ios_config:
+        lines:
+        - no {{ item.1 }}
+        parents: "{{ item.0.interface }}"
+      loop: "{{ intflist | subelements('secondaryip', 'skip_missing=True') }}"
