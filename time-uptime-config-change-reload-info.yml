@@ -1,0 +1,25 @@
+##############################################################################################
+#    Show The Last Time Device Configuration Was Changed And The User Who Made The Change    #
+#    Also Display The Current Time And Uptime Of Device And The Reload Reason If Any         #
+##############################################################################################
+---
+- name: Show Configuration Change Info, Time And Uptime, And Reload Reason
+  hosts: iosxerouter
+  gather_facts: false
+
+  tasks:
+    - name: Retrieve required information
+      ios_command:
+        commands:
+        - show clock
+        - show running-config | include Last configuration change
+        - show version | include Uptime|Last reload reason
+      register: config_extract
+
+    - name: Format retrieved information
+      set_fact:
+         output: "{{ config_extract.stdout | join('\n') }}"
+
+    - name: Show device time, last change time and user, uptime, and reload reason
+      debug:
+        var: output
