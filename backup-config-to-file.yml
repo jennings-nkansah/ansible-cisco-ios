@@ -3,8 +3,7 @@
 #################################################################
 ---
 - name: Backup Cisco IOSXE Router or Switch
-  hosts: iosxe
-  connection: ansible.netcommon.network_cli
+  hosts: iosxerouter
   gather_facts: false
 
   tasks:
