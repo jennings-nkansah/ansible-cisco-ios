@@ -1,0 +1,25 @@
+---
+acls:
+  - acls:
+      - aces:
+          - destination:
+              address: 10.1.1.0
+              wildcard_bits: 0.0.0.255
+            grant: permit
+            protocol: ip
+            sequence: 10
+            source:
+              address: 10.0.68.0
+              wildcard_bits: 0.0.0.255
+          - destination:
+              address: 10.1.1.0
+              wildcard_bits: 0.0.0.255
+            grant: permit
+            protocol: ip
+            sequence: 20
+            source:
+              address: 192.168.20.0
+              wildcard_bits: 0.0.0.255
+        acl_type: extended
+        name: vpn-tunnel
+    afi: ipv4
