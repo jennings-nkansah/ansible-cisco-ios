@@ -1,0 +1,34 @@
+---
+# Crypto Isakmp Policy
+crypto_isakmp_policies:
+  - number: 10
+    encryption: 256-aes
+    authentication: pre-share
+    group: 15
+    hash: sha256
+    lifetime: 86400
+
+# Pre-shared Key
+# crypto isakmp key is stored separately using Ansible Vault
+
+# Transform Set
+ikev1_transform_set:
+  name: aes256-sha256
+  transform:
+    - esp-256-aes
+    - esp-sha256-hmac
+
+# Crypto Map Set
+crypto_map_set:
+  number: 1
+  name: cryptomap
+  encryption_domain: vpn-tunnel
+  peer: 10.0.20.1
+  transform_set: aes256-sha256
+  sa_lifetime: 3600
+  pfs: true
+  pfs_group: 14
+
+# Crypto Map Interface
+crypto_map_interface:
+  interface: GigabitEthernet1
