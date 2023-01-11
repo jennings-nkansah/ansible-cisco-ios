@@ -1,0 +1,57 @@
+##############################################################################
+# Configure Site-to-Site IKEv1 IPsec VPN Using Pre-Shared Key Authentication #
+##############################################################################
+---
+- name: Site-to-Site IKEv1 IPsec VPN Using Pre-Shared Key Authentication
+  hosts: iosxerouter
+  gather_facts: false
+
+  vars_files:
+    - ./vars_files/acls-01.yaml
+    - ./vars_files/s2svpn-01.yml
+    - ./vars_files/secrets.yml
+
+  tasks:
+    - name: Creating Crypto Access Lists
+      ios_acls:
+        state: replaced
+        config: "{{ acls }}"
+
+    - name: Configuring Crypto Isakmp Policy
+      ios_config:
+        lines:
+          - "encryption {{ crypto_isakmp_policies[0].encryption }}"
+          - "authentication {{ crypto_isakmp_policies[0].authentication }}"
+          - "group {{ crypto_isakmp_policies[0].group }}"
+          - "hash {{ crypto_isakmp_policies[0].hash }}"
+          - "lifetime {{ crypto_isakmp_policies[0].lifetime }}"
+        parents: "crypto isakmp policy {{ crypto_isakmp_policies[0].number }}"
+      tags: isakmp
+
+    - name: Configuring Pre-shared Key
+      ios_config:
+        lines:
+          - "crypto isakmp key {{ crypto_isakmp_key }} address {{ crypto_map_set.peer }}"
+      no_log: true
+
+    - name: Configuring Transform Sets for IKEv1
+      ios_config:
+        lines:
+          - "crypto ipsec transform-set {{ ikev1_transform_set.name }} {{ ikev1_transform_set.transform | join(' ')}}"
+
+    - name: Creating Crypto Map Sets
+      ios_config:
+        lines:
+          - "match address {{ crypto_map_set.encryption_domain }}"
+          - "set peer {{ crypto_map_set.peer }}"
+          - "set transform-set {{ crypto_map_set.transform_set }}"
+          - "set security-association lifetime seconds {{ crypto_map_set.sa_lifetime }}"
+          - "{{ (crypto_map_set.pfs == true) | ternary('set pfs group' + crypto_map_set.pfs_group | string, 'no set pfs') }}"
+        parents: "crypto map {{ crypto_map_set.name }} {{crypto_map_set.number }} ipsec-isakmp"
+
+    - name: Applying Crypto Map Sets to Interfaces
+      ios_config:
+        lines:
+          - "crypto map {{ crypto_map_set.name }}"
+        parents: "interface {{ crypto_map_interface.interface }}"
+      tags: intf
