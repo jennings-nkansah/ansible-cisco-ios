@@ -1,0 +1,10 @@
+---
+vars:
+  vlans:
+    port: "{{ item.port }}"
+    allowed_vlans: "{{ item.allowed_vlans.split(',') }}"
+
+keys:
+  vlans:
+    value: "{{ vlans }}"
+    items: "\\n(?P<port>([A-Za-z]+)\\d*\\/*\\d*\\/*\\d*)\\s+(?P<allowed_vlans>(.+))?$"
