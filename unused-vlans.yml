@@ -1,0 +1,119 @@
+# ############################################################################# #
+# Display the list of shutdown vlans, suspended vlans, and any active vlan that #
+#   have not been allowed on a trunk interface or assigned to an access port    #
+# ############################################################################# #
+---
+- name: Retrieve All Unused Vlans
+  hosts: iosswitch
+  gather_facts: false
+
+  vars:
+    vlan_parse_path: ./parse_files/show-vlan-brief-parse.yml
+    trunk_parse_path: ./parse_files/show-interfaces-trunk-parse.yml
+    active_vlan_list: ['']
+    allowed_vlan_list: ['']
+    combined_list: []
+    final_list: ['']
+    common_vlan_list: ['-1']
+    single_allowed_vlans: ['']
+    filtered_vlan_list: ['']
+    vlan_ranges_allowed: ['0-0']
+
+  tasks:
+    - name: Retrieve all vlans
+      ios_command:
+        commands:
+          - show vlan brief
+      register: output_vlans
+
+    - name: Convert cli output into yaml
+      set_fact:
+        vlan_list_1: "{{ output_vlans.stdout[0] | parse_cli( vlan_parse_path ) }}"
+      no_log: true
+
+    - name: Retrieve active vlans not belonging to access port(s)
+      set_fact:
+        active_vlan_list: "{{ active_vlan_list + [ item.id ] }}"
+      loop: "{{ vlan_list_1.vlans }}"
+      when: "( vlan_list_1 is defined and ( ( item.status != 'active') or ( item.status == 'active' and item.ports == [''] ) ) )"
+      no_log: true
+
+    - name: Retrieve trunk interfaces and their vlans
+      ios_command:
+        commands:
+          - show interfaces trunk
+      register: output_trunk
+
+    - name: Retrieve extract from output
+      set_fact:
+        output_extract_1: "{{ output_trunk.stdout[0] | regex_replace( '\\nPort\\s+Vlans in spanning tree(.*\\n.*)*', '' ) }}"
+      when: "output_trunk.stdout[0] != ''"
+      no_log: true
+
+    - name: Retrieve extract from output
+      set_fact:
+        output_extract_2: "{{ output_extract_1 | regex_replace( '(.*\\n)*\\s+(?=Port.*Vlans allowed and active)', '' ) }}"
+      when: output_extract_1 is defined
+      no_log: true
+
+    - name: Convert cli output into yaml
+      set_fact:
+        vlan_list_2: "{{ output_extract_2 | parse_cli(trunk_parse_path) }}"
+      when: output_extract_2 is defined
+      no_log: true
+
+    - name: Retrieve all vlans allowed and active in management domain
+      set_fact:
+        allowed_vlan_list: "{{ allowed_vlan_list + item.allowed_vlans }}"
+      loop: "{{ vlan_list_2.vlans }}"
+      when: vlan_list_2 is defined
+      no_log: true
+
+    - name: Remove duplicate vlans allowed and active in management domain
+      set_fact:
+        unique_allowed_vlans: "{{ allowed_vlan_list | unique }}"
+      when: "allowed_vlan_list != ''"
+      no_log: true
+
+    - name: Select single vlans from allowed vlans
+      set_fact:
+        single_allowed_vlans: "{{ single_allowed_vlans + [ item | int ] }}"
+      loop: "{{ unique_allowed_vlans }}"
+      when: "single_allowed_vlans is defined and '-' not in item"
+      no_log: true
+
+    - name: Filter out single allowed vlans from all vlans
+      set_fact:
+        filtered_vlan_list: "{{ active_vlan_list | difference( single_allowed_vlans ) }}"
+      when: "single_allowed_vlans != ['']"
+      no_log: true
+
+    - name: Select vlan ranges from allowed vlans
+      set_fact:
+        vlan_ranges_allowed: "{{ vlan_ranges_allowed + [ item ] }}"
+      loop: "{{ unique_allowed_vlans }}"
+      when: "'-' in item"
+      no_log: true
+
+    - name: Put together remaining vlans along with vlan ranges
+      set_fact:
+        combined_list: "{{ combined_list + [{ 'vlan': item, 'ranges': vlan_ranges_allowed }] }}"
+      loop: "{{ filtered_vlan_list }}"
+      no_log: true
+      when: "filtered_vlan_list != [''] and vlan_ranges_allowed != ['']"
+
+    - name: Select remaining vlans that fall within a vlan range
+      set_fact:
+        common_vlan_list: "{{ common_vlan_list + [ item.0.vlan ] }}"
+      loop: "{{ combined_list | subelements( 'ranges' ) }}"
+      when: "( item.0.vlan >= item.1 | regex_search('^\\d+') | int ) and ( item.0.vlan <= item.1 | regex_search('\\d+$') | int )"
+
+    - name: Select unused vlans
+      set_fact:
+        unused_vlan_list: "{{ filtered_vlan_list | difference( common_vlan_list | unique ) }}"
+      no_log: true
+      when: "common_vlan_list != ''"
+
+    - name: Display unused vlans
+      debug:
+        var: unused_vlan_list
