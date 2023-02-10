@@ -10,25 +10,33 @@
     tftp_server: 192.168.1.2
 
   tasks:
-    - name: Get device hostname
+    - name: Retrieve device hostname
       ios_facts:
         gather_subset:
-        - hardware
+          - '!all'
+          - '!min'
+        gather_network_resources:
+          - hostname
+
+    - name: Store hostname in a variable
+      set_fact:
+        hostname: "{{ ansible_network_resources.hostname.hostname }}"
 
     - name: Configure kron policy
       ios_config:
         lines:
-        - cli copy system:/running-config tftp://{{ tftp_server }}/{{ ansible_net_hostname }}.cfg
-        parents: kron policy-list backup-config
-        before: no kron policy-list backup-config
+          - cli copy system:/running-config tftp://{{ tftp_server }}/{{ hostname }}.cfg
+        parents: kron policy-list save-config
+        before: no kron policy-list save-config
+        match: exact
 
     - name: Configure kron schedule
       ios_config:
         lines:
-        - policy-list backup-config
+          - policy-list save-config
         parents: kron occurrence weekly at 11:59 Fri recurring
         before: no kron occurrence weekly in 11:59 recurring
-        replace: block
+        match: exact
 
     - name: Save running-configuration
       ios_config:
