@@ -10,12 +10,12 @@
     intf_noip_list: []
 
   tasks:
-    - name: Retrieve all interfaces
+    - name: Retrieve interfaces
       ios_command:
         commands: show running-config | include ^interface.*thernet.*$
       register: intf_list
 
-    - name: Retrieve interfaces configurations
+    - name: Retrieve interface configurations
       ios_command:
         commands: show running-config {{ item }}
       register: intf_config
@@ -25,8 +25,8 @@
       set_fact:
         intf_noip_list: "{{ intf_noip_list | default([]) + [ item.item ] }}"
       loop: "{{ intf_config.results }}"
-      no_log: true
       when: "'\n ip address' not in item.stdout[0]"
+      no_log: true
 
     - name: Display interfaces with no ip address
       debug:
