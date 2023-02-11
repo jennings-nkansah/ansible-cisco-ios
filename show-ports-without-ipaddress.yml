@@ -10,7 +10,7 @@
     intf_noip_list: []
 
   tasks:
-    - name: Retrieve interfaces
+    - name: Retrieve physical interfaces
       ios_command:
         commands: show running-config | include ^interface.*thernet.*$
       register: intf_list
