@@ -3,7 +3,7 @@
 ###################################################################################
 ---
 - name: Display Physical Interfaces With No IP Addresses
-  hosts: ios
+  hosts: iosswitch
   gather_facts: false
 
   vars:
