@@ -1,3 +1,6 @@
+# ##################################################################################
+#                       Configure Native Vlan On Trunk Ports                       #
+# ##################################################################################
 ---
 - name: Configure Native Vlan
   hosts: iosswitch
@@ -9,34 +12,32 @@
 
   tasks:
     - name: Configure vlan {{ native_vlan }}
-      ios_config:
-        lines:
-          - vlan {{ native_vlan }}
+      cisco.ios.ios_vlans:
+        config:
+          - name: "NATIVE-VLAN"
+            vlan_id: "{{ native_vlan | int }}"
+            state: active
+            shutdown: disabled
 
-    - name: Configure vlan name
-      ios_config:
-        lines:
-        - name NATIVE-VLAN
-        parents: vlan {{ native_vlan }}
-
-    - name: Retrieving all interfaces
+    - name: Retrieve interfaces
       ios_command:
         commands: show running-config | include ^interface.*(thernet|channel).*$
       register: intf_list
 
-    - name: Retrieving interfaces configurations
+    - name: Retrieve interface configurations
       ios_command:
         commands: show running-config {{ item }}
       register: intf_config
       loop: "{{ intf_list.stdout_lines[0] }}"
-
-    - name: Retrieving trunk interfaces (excluding port-channel member ports)
+      no_log: true
+      
+    - name: Retrieve trunk interfaces
       set_fact:
         trunk_intf_list: "{{ trunk_intf_list | default([]) + [ item.item ] }}"
       loop: "{{ intf_config.results }}"
-      no_log: true
       when: ('\n switchport mode trunk' in item.stdout[0]) and ('\n channel-group' not in item.stdout[0])
-
+      no_log: true
+      
     - name: Configure native vlan on trunk interfaces
       ios_config:
         lines:
